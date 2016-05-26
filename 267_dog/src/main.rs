@@ -5,7 +5,7 @@ use std::io::{self, Write};
 fn main() {
    let args: Vec<String> = env::args().collect();
    if args.len() != 2 {
-       try!(io::stderr().write(b"You must provide exactly one argument"));
+       io::stderr().write(b"You must provide exactly one argument");
        process::exit(1);
    }
 
