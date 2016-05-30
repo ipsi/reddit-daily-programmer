@@ -1,0 +1,6 @@
+[package]
+name = "267_resistance"
+version = "0.1.0"
+authors = ["Andrew Thorburn <nzipsi@gmail.com>"]
+
+[dependencies]
