@@ -16,3 +16,4 @@
 
 # Created by rustfmt
 *.rs.bk
+*.rs.swp
