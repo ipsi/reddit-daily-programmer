@@ -16,4 +16,6 @@
 
 # Created by rustfmt
 *.rs.bk
-*.rs.swp
+
+# VIM swp files
+*.swp
