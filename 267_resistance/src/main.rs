@@ -189,11 +189,33 @@ fn run(a: Vec<String>) -> Result<u16> {
     }
 }
 
+/// Input:
+/// ```
+/// [A]--(10)--[B]--(10)--[C]
+/// ```
+///
+/// Expected output:
+/// ```
+/// [A]--(20)--[C]
+/// ```
 #[test]
 fn should_merge_all_nodes_with_only_single_source_and_target() {
     assert!(run(vec!(String::from("exec"), String::from("./sequential.txt"))).unwrap() == 20);
 }
 
+/// Input:
+/// ```
+///      +--(10)--+
+///      |        |
+/// [A]--+        +--[B]
+///      |        |
+///      +--(20)--+
+/// ```
+///
+/// Expected output:
+/// ```
+/// [A]--(6.666666...7)--[B]
+/// ```
 #[test]
 fn should_calculate_inverse_resistence_for_parallel_links() {
     // assert!(run(vec!(String::from("exec"), String::from("./parallel.txt"))).unwrap() == 7); // Rounding up, since we're returning a u16. Oooops.
