@@ -4,5 +4,4 @@ version = "0.1.0"
 authors = ["Andrew Thorburn <nzipsi@gmail.com>"]
 
 [dependencies]
-bincode = "0.5.9"
-rustc-serialize = "0.3.19"
+byteorder = "0.5.3"

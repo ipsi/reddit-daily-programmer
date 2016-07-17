@@ -1,7 +1,7 @@
-extern crate rustc_serialize;
-extern crate bincode;
-use bincode::rustc_serialize::encode_into;
-use bincode::SizeLimit;
+extern crate byteorder;
+use std::io::Write;
+use std::io::Result;
+use byteorder::{BigEndian, WriteBytesExt};
 
 fn frequencies(note: char) -> f32 {
     match note {
@@ -16,7 +16,6 @@ fn frequencies(note: char) -> f32 {
     }
 }
 
-#[derive(RustcEncodable)]
 struct WavHeader {
     chunk_id : [u8; 4],
     chunk_size: u32,
@@ -28,16 +27,24 @@ struct WavHeader {
 impl WavHeader {
     fn new(sample_rate: u32, bytes_per_sample: usize, data: &[u8]) -> WavHeader {
         WavHeader {
-            chunk_id: [b'R', b'I', b'F', b'F'],
+            chunk_id: [b'R', b'I', b'F', b'X'],
             chunk_size: 32 + data.len() as u32,
             format: [b'W', b'A', b'V', b'E'],
             fmt: Format::new(sample_rate, bytes_per_sample),
             data: Data::new(data),
         }
     }
+
+    fn write(&self, writer: &mut Write) -> Result<usize> {
+        try!(writer.write(&self.chunk_id));
+        try!(writer.write_u32::<BigEndian>(self.chunk_size));
+        try!(writer.write(&self.format));
+        try!(self.fmt.write(writer));
+        try!(self.data.write(writer));
+        Ok(self.chunk_size as usize + 8)
+    }
 }
 
-#[derive(RustcEncodable)]
 struct Format {
     chunk_id : [u8; 4],
     chunk_size : u32,
@@ -62,9 +69,21 @@ impl Format {
             bits_per_sample: bytes_per_sample as u16 * 8,
         }
     }
+
+    fn write(&self, writer: &mut Write) -> Result<usize> {
+        try!(writer.write(&self.chunk_id));
+        try!(writer.write_u32::<BigEndian>(self.chunk_size));
+        try!(writer.write_u16::<BigEndian>(self.audio_format));
+        try!(writer.write_u16::<BigEndian>(self.channels));
+        try!(writer.write_u32::<BigEndian>(self.sample_rate));
+        try!(writer.write_u32::<BigEndian>(self.byte_rate));
+        try!(writer.write_u16::<BigEndian>(self.block_align));
+        try!(writer.write_u16::<BigEndian>(self.bits_per_sample));
+        Ok(self.chunk_size as usize + 8)
+    }
+
 }
 
-#[derive(RustcEncodable)]
 struct Data {
     chunk_id : [u8; 4],
     chunk_size : u32,
@@ -78,6 +97,13 @@ impl Data {
             chunk_size: data.len() as u32,
             data: data.to_vec(),
         }
+    }
+
+    fn write(&self, writer: &mut Write) -> Result<usize> {
+        try!(writer.write(&self.chunk_id));
+        try!(writer.write_u32::<BigEndian>(self.chunk_size));
+        try!(writer.write(self.data.as_slice()));
+        Ok(self.chunk_size as usize + 8)
     }
 }
 
@@ -126,21 +152,12 @@ fn main() {
 
     let mut sout = std::io::stdout();
     let wave_file = WavHeader::new(sample_rate as u32, std::mem::size_of::<u8>(), &out);
-    let size = SizeLimit::Bounded(100000 as u64);
-    let result = encode_into(&wave_file, &mut sout, size);
-    match result {
+
+    match wave_file.write(&mut sout) {
         Ok(_) => {},
         Err(e) => {
             println!("Received error [{}] writing output", e);
             std::process::exit(3);
         }
     };
-
-    //match sout.write_all(&out) {
-    //    Ok(_) => {},
-    //    Err(e) => {
-    //        println!("Received error [{}] writing output", e);
-    //        std::process::exit(3);
-    //    }
-    //};
 }
