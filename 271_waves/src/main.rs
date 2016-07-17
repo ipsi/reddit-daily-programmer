@@ -1,4 +1,7 @@
-use std::io::Write;
+extern crate rustc_serialize;
+extern crate bincode;
+use bincode::rustc_serialize::encode_into;
+use bincode::SizeLimit;
 
 fn frequencies(note: char) -> f32 {
     match note {
@@ -13,21 +16,69 @@ fn frequencies(note: char) -> f32 {
     }
 }
 
-struct wav_header {
-    chunk_id : str = "RIFF",
+#[derive(RustcEncodable)]
+struct WavHeader {
+    chunk_id : [u8; 4],
     chunk_size: u32,
-    format : str = "WAVE",
-    subchunk_id : str = "fmt ",
-    subchunk_size : u32 = 16,
-    audio_format : u16 = 1,
-    channels : u16 = 1,
+    format : [u8; 4],
+    fmt : Format,
+    data : Data,
+}
+
+impl WavHeader {
+    fn new(sample_rate: u32, bytes_per_sample: usize, data: &[u8]) -> WavHeader {
+        WavHeader {
+            chunk_id: [b'R', b'I', b'F', b'F'],
+            chunk_size: 32 + data.len() as u32,
+            format: [b'W', b'A', b'V', b'E'],
+            fmt: Format::new(sample_rate, bytes_per_sample),
+            data: Data::new(data),
+        }
+    }
+}
+
+#[derive(RustcEncodable)]
+struct Format {
+    chunk_id : [u8; 4],
+    chunk_size : u32,
+    audio_format : u16,
+    channels : u16,
     sample_rate : u32,
     byte_rate : u32,
     block_align : u16,
     bits_per_sample : u16,
-    data_id : str = "data",
-    data_size : u32,
-    data : [u8],
+}
+
+impl Format {
+    fn new(sample_rate: u32, bytes_per_sample: usize) -> Format {
+        Format {
+            chunk_id: [b'f', b'm', b't', b' '],
+            chunk_size: 16,
+            audio_format: 1,
+            channels: 1,
+            sample_rate: sample_rate,
+            byte_rate: bytes_per_sample as u32 * sample_rate,
+            block_align: bytes_per_sample as u16,
+            bits_per_sample: bytes_per_sample as u16 * 8,
+        }
+    }
+}
+
+#[derive(RustcEncodable)]
+struct Data {
+    chunk_id : [u8; 4],
+    chunk_size : u32,
+    data : Vec<u8>,
+}
+
+impl Data {
+    fn new(data: &[u8]) -> Data {
+        Data {
+            chunk_id: [b'd', b'a', b't', b'a'],
+            chunk_size: data.len() as u32,
+            data: data.to_vec(),
+        }
+    }
 }
 
 fn main() {
@@ -74,11 +125,22 @@ fn main() {
     }
 
     let mut sout = std::io::stdout();
-    match sout.write_all(&out) {
+    let wave_file = WavHeader::new(sample_rate as u32, std::mem::size_of::<u8>(), &out);
+    let size = SizeLimit::Bounded(100000 as u64);
+    let result = encode_into(&wave_file, &mut sout, size);
+    match result {
         Ok(_) => {},
         Err(e) => {
             println!("Received error [{}] writing output", e);
             std::process::exit(3);
         }
     };
+
+    //match sout.write_all(&out) {
+    //    Ok(_) => {},
+    //    Err(e) => {
+    //        println!("Received error [{}] writing output", e);
+    //        std::process::exit(3);
+    //    }
+    //};
 }
